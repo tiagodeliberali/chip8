@@ -96,20 +96,34 @@ impl Chip8 {
     }
 
     fn draw(&mut self, position_x: usize, position_y: usize, bytes: usize) {
+        self.registers[0xF] = 0;
+
         for i in 0..bytes {
             let data = self.memory[self.i + i];
             debug(format!("{:08b}", data));
 
-            self.screen[position_x + 7][position_y + i] = (data as u8) & 0b0000_0001;
-            self.screen[position_x + 6][position_y + i] = ((data as u8) & 0b0000_0010) >> 1;
-            self.screen[position_x + 5][position_y + i] = ((data as u8) & 0b0000_0100) >> 2;
-            self.screen[position_x + 4][position_y + i] = ((data as u8) & 0b0000_1000) >> 3;
+            self.xor_screen(position_x + 7, position_y + i, (data as u8) & 0b0000_0001);
+            self.xor_screen(position_x + 6, position_y + i, ((data as u8) & 0b0000_0010) >> 1);
+            self.xor_screen(position_x + 5, position_y + i, ((data as u8) & 0b0000_0100) >> 2);
+            self.xor_screen(position_x + 4, position_y + i, ((data as u8) & 0b0000_1000) >> 3);
 
-            self.screen[position_x + 3][position_y + i] = ((data as u8) & 0b0001_0000) >> 4;
-            self.screen[position_x + 2][position_y + i] = ((data as u8) & 0b0010_0000) >> 5;
-            self.screen[position_x + 1][position_y + i] = ((data as u8) & 0b0100_0000) >> 6;
-            self.screen[position_x + 0][position_y + i] = ((data as u8) & 0b1000_0000) >> 7;
+            self.xor_screen(position_x + 3, position_y + i, ((data as u8) & 0b0001_0000) >> 4);
+            self.xor_screen(position_x + 2, position_y + i, ((data as u8) & 0b0010_0000) >> 5);
+            self.xor_screen(position_x + 1, position_y + i, ((data as u8) & 0b0100_0000) >> 6);
+            self.xor_screen(position_x + 0, position_y + i, ((data as u8) & 0b1000_0000) >> 7);
         }
+    }
+
+    fn xor_screen(&mut self, x: usize, y: usize, value: u8) {
+        self.screen[x][y] = if self.screen[x][y] == value {
+            if self.screen[x][y] == 1 {
+                self.registers[0xF] = 0x01;
+            }
+            0
+        } else {
+            1
+        };
+
     }
 
     fn print_screen(&self) {
