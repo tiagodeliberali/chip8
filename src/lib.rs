@@ -38,26 +38,33 @@ impl Chip8 {
     }
 
     pub fn main_loop(&mut self) {
-        while self.memory_position < self.memory.len() {
-            let instruction = self.get_next_instruction();
-            let address = (instruction & LAST_12) as usize;
-            let mask = (instruction & LAST_8) as u8;
-            let register_x = ((instruction >> 8) & LAST_4) as usize;
-            let register_y = ((instruction >> 4) & LAST_4) as usize;
-            let sub_op = (instruction & LAST_4) as usize;
-
-            debug(format!("OPCODE: {:04x}", instruction));
-
-            match instruction {
-                0x0000 => return,
-                0xA000..=0xAFFF => self.i = address,
-                0xC000..=0xCFFF => self.set_random_value(register_x, mask),
-                _ => println!("UNKNOWN OPCODE: {:04x}", instruction),
-            }
-
-            self.print_state();
-            self.memory_position += 2;
+        let mut should_iterate = true;
+        while should_iterate {
+            should_iterate = self.single_iteration();
         }
+    }
+
+    fn single_iteration(&mut self) -> bool {
+        let instruction = self.get_next_instruction();
+        let address = (instruction & LAST_12) as usize;
+        let mask = (instruction & LAST_8) as u8;
+        let register_x = ((instruction >> 8) & LAST_4) as usize;
+        let register_y = ((instruction >> 4) & LAST_4) as usize;
+        let sub_op = (instruction & LAST_4) as usize;
+
+        debug(format!("OPCODE: {:04x}", instruction));
+
+        match instruction {
+            0x0000 => return false,
+            0xA000..=0xAFFF => self.i = address,
+            0xC000..=0xCFFF => self.set_random_value(register_x, mask),
+            _ => println!("UNKNOWN OPCODE: {:04x}", instruction),
+        }
+
+        self.print_state();
+        self.memory_position += 2;
+
+        return true;
     }
 
     fn set_random_value(&mut self, register_id: usize, mask: u8) {
@@ -96,5 +103,44 @@ impl Chip8 {
                 self.registers[14],
                 self.registers[15],
             ));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_stop_on_0000() {
+        let program = vec![0x00, 0x00];
+        let mut chip = Chip8::new_with_memory(program);
+
+        let should_iterate = chip.single_iteration();
+
+        assert_eq!(should_iterate, false);
+    }
+
+    #[test]
+    fn should_store_address_on_i() {
+        let program = vec![0xA2, 0x1E];
+        let mut chip = Chip8::new_with_memory(program);
+
+        let should_iterate = chip.single_iteration();
+
+        assert_eq!(should_iterate, true);
+        assert_eq!(chip.i, 0x21E);
+    }
+
+    #[test]
+    fn should_set_random_value_with_mask_on_registers() {
+        // This is a fake test, to avoid deal with random
+        // Must implement a Utils/Random trait and import it inside Chip8
+        let program = vec![0xC2, 0x00];
+        let mut chip = Chip8::new_with_memory(program);
+
+        let should_iterate = chip.single_iteration();
+
+        assert_eq!(should_iterate, true);
+        assert_eq!(chip.registers[0x02], 0x00);
     }
 }

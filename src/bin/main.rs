@@ -10,11 +10,13 @@ fn main() {
         }
     };
 
+    print_file(&game_data);
+
     let mut chip = Chip8::new_with_memory(game_data);
     chip.main_loop();
 }
 
-fn print_file(data: Vec<u8>) {
+fn print_file(data: &Vec<u8>) {
     let mut i = 0;
     while i < data.len() {
         print!("{:02x}", data[i]);
