@@ -11,11 +11,12 @@ const LAST_12: u16 = 0b0000_1111_1111_1111;
 pub struct Chip8 {
     memory: [u8; 4096],
     memory_position: usize,
-    stack: [u16; 16],
+    stack: [usize; 16],
     stack_position: usize,
     i: usize,
     registers: [u8; 16],
     screen: [[u8; 64]; 32],
+    key_pressed: u8,
 }
 
 impl Chip8 {
@@ -36,6 +37,7 @@ impl Chip8 {
             i: 0,
             registers: [0; 16],
             screen: [[0; 64]; 32],
+            key_pressed: 0,
         }
     }
 
@@ -59,19 +61,59 @@ impl Chip8 {
         match instruction {
             0x0000 => return false,
             0x00E0 => self.clear_screen(),
+            0x00EE => self.return_from_subroutine(),
+            0x1000..=0x1FFF => {
+                self.memory_position = address;
+                self.print_state();
+                self.print_screen();
+                return true;
+            },
+            0x2000..=0x2FFF => {
+                self.execute_subroutine(address);
+                self.print_state();
+                self.print_screen();
+                return true;
+            },
             0x3000..=0x3FFF => self.skip_next_position(self.registers[register_x] == mask),
             0x4000..=0x4FFF => self.skip_next_position(self.registers[register_x] != mask),
+            0x5000..=0x5FFF => self.skip_next_position(self.registers[register_x] == self.registers[register_y]),
+            0x6000..=0x6FFF => self.registers[register_x] = mask,
+            0x7000..=0x7FFF => self.registers[register_x] += mask,
+            0x9000..=0x9FFF => self.skip_next_position(self.registers[register_x] != self.registers[register_y]),
             0xA000..=0xAFFF => self.i = address,
+            0xB000..=0xBFFF => {
+                self.memory_position = address + (self.registers[0x0] as usize);
+                self.print_state();
+                self.print_screen();
+                return true;
+            },
             0xC000..=0xCFFF => self.set_random_value(register_x, mask),
-            0xD000..=0xDFFF => self.draw(register_x, register_y, sub_op),
-            _ => println!("UNKNOWN OPCODE: {:04x}", instruction),
+            0xD000..=0xDFFF => self.draw(self.registers[register_x] as usize, self.registers[register_y] as usize, sub_op),
+            0xE09E..=0xEF9E => self.skip_next_position(self.registers[register_x] == self.key_pressed),
+            0xE0A1..=0xEFA1 => self.skip_next_position(self.registers[register_x] != self.key_pressed),
+            _ => panic!("UNKNOWN OPCODE: {:04x}", instruction),
         }
 
-        self.print_state();
-        self.print_screen();
         self.memory_position += 2;
 
+        self.print_state();
+
         return true;
+    }
+
+    fn execute_subroutine(&mut self, address: usize) {
+        self.stack[self.stack_position] = self.memory_position;
+        self.stack_position += 1;
+        self.memory_position = address;
+    }
+
+    fn return_from_subroutine(&mut self) {
+        if self.stack_position == 0 {
+            panic!("stack underflow!");
+        }
+
+        self.stack_position -= 1;
+        self.memory_position = self.stack[self.stack_position];
     }
 
     fn skip_next_position(&mut self, should_skip: bool) {
@@ -81,7 +123,7 @@ impl Chip8 {
     }
 
     fn set_random_value(&mut self, register_id: usize, mask: u8) {
-        let x: u8 = 0_u8; // random();
+        let x: u8 = random();
         self.registers[register_id] = x & mask;
     }
 
@@ -112,9 +154,15 @@ impl Chip8 {
             self.xor_screen(position_x + 1, position_y + i, ((data as u8) & 0b0100_0000) >> 6);
             self.xor_screen(position_x + 0, position_y + i, ((data as u8) & 0b1000_0000) >> 7);
         }
+
+        self.print_screen();
     }
 
-    fn xor_screen(&mut self, x: usize, y: usize, value: u8) {
+    fn xor_screen(&mut self, y: usize, x: usize, value: u8) {
+        if x > 64 || y > 32 {
+            return;
+        }
+
         self.screen[x][y] = if self.screen[x][y] == value {
             if self.screen[x][y] == 1 {
                 self.registers[0xF] = 0x01;
@@ -144,7 +192,8 @@ impl Chip8 {
 
     fn print_state(&self) {
         debug(
-            format!("memory_position: {:02x}\ni: {} ({:03x})\nv[0..4]:\t{}\t{}\t{}\t{}\t{}\nv[5..9]:\t{}\t{}\t{}\t{}\t{}\nv[10..15]:\t{}\t{}\t{}\t{}\t{}\t{}", 
+            format!("memory_position: {} ({:02x})\ni: {} ({:03x})\nv[0..4]:\t{}\t{}\t{}\t{}\t{}\nv[5..9]:\t{}\t{}\t{}\t{}\t{}\nv[10..15]:\t{}\t{}\t{}\t{}\t{}\t{}", 
+                self.memory_position,
                 self.memory_position,
                 self.i,
                 self.i,
