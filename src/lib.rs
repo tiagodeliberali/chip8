@@ -8,6 +8,9 @@ const LAST_4: u16 = 0b0000_0000_0000_1111;
 const LAST_8: u16 = 0b0000_0000_1111_1111;
 const LAST_12: u16 = 0b0000_1111_1111_1111;
 
+const SCREEN_X: usize = 64;
+const SCREEN_Y: usize = 32;
+
 pub struct Chip8 {
     memory: [u8; 4096],
     memory_position: usize,
@@ -15,7 +18,7 @@ pub struct Chip8 {
     stack_position: usize,
     i: usize,
     registers: [u8; 16],
-    screen: [[u8; 64]; 32],
+    screen: [[u8; SCREEN_X]; SCREEN_Y],
     key_pressed: u8,
 }
 
@@ -36,7 +39,7 @@ impl Chip8 {
             stack_position: 0,
             i: 0,
             registers: [0; 16],
-            screen: [[0; 64]; 32],
+            screen: [[0; SCREEN_X]; SCREEN_Y],
             key_pressed: 0,
         }
     }
@@ -134,7 +137,7 @@ impl Chip8 {
     }
 
     fn clear_screen(&mut self) {
-        self.screen = [[0; 64]; 32];
+        self.screen = [[0; SCREEN_X]; SCREEN_Y];
     }
 
     fn draw(&mut self, position_x: usize, position_y: usize, bytes: usize) {
@@ -158,13 +161,13 @@ impl Chip8 {
         self.print_screen();
     }
 
-    fn xor_screen(&mut self, y: usize, x: usize, value: u8) {
-        if x > 64 || y > 32 {
+    fn xor_screen(&mut self, x: usize, y: usize, value: u8) {
+        if x >= SCREEN_X || y >= SCREEN_Y {
             return;
         }
 
-        self.screen[x][y] = if self.screen[x][y] == value {
-            if self.screen[x][y] == 1 {
+        self.screen[y][x] = if self.screen[y][x] == value {
+            if self.screen[y][x] == 1 {
                 self.registers[0xF] = 0x01;
             }
             0
@@ -176,10 +179,10 @@ impl Chip8 {
 
     fn print_screen(&self) {
         println!("╔════════════════════════════════════════════════════════════════╗");
-        for i in self.screen.iter() {
+        for y in 0..SCREEN_Y {
             print!("║");
-            for j in i.iter() {
-                if *j == 0_u8 {
+            for x in 0..SCREEN_X {
+                if self.screen[y][x] == 0_u8 {
                     print!("░");
                 } else {
                     print!("█");
