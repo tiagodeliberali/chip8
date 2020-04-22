@@ -6,7 +6,6 @@ Reference documentation for implementing operations from Matthew Mikolay, [Maste
 Also, lots of debuging comparing with the Colin Eberhardt's [Chip8 emulator](https://colineberhardt.github.io/wasm-rust-chip8/web/).
 
 ## work in progress
- - The draw method is wrong
  - Operations from opcode 8 not implemented
  - Operations from opcode F not implemented
  - Fix random() usage to allow tests
