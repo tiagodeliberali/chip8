@@ -2,10 +2,6 @@ use rand::prelude::*;
 
 pub mod utils;
 
-fn debug(text: String) {
-    println!("{}", text);
-}
-
 const LAST_4: u16 = 0b0000_0000_0000_1111;
 const LAST_8: u16 = 0b0000_0000_1111_1111;
 const LAST_12: u16 = 0b0000_1111_1111_1111;
@@ -20,7 +16,7 @@ pub struct Chip8 {
     stack_position: usize,
     i: usize,
     registers: [u8; 16],
-    screen: [[u8; SCREEN_X]; SCREEN_Y],
+    pub screen: [[u8; SCREEN_X]; SCREEN_Y],
     key_pressed: u8,
 }
 
@@ -53,7 +49,7 @@ impl Chip8 {
         }
     }
 
-    fn single_iteration(&mut self) -> bool {
+    pub fn single_iteration(&mut self) -> bool {
         let instruction = self.get_next_instruction();
         let address = (instruction & LAST_12) as usize;
         let mask = (instruction & LAST_8) as u8;
@@ -61,48 +57,49 @@ impl Chip8 {
         let register_y = ((instruction >> 4) & LAST_4) as usize;
         let sub_op = (instruction & LAST_4) as usize;
 
-        debug(format!("OPCODE: {:04x}", instruction));
-
         match instruction {
             0x0000 => return false,
             0x00E0 => self.clear_screen(),
             0x00EE => self.return_from_subroutine(),
             0x1000..=0x1FFF => {
                 self.memory_position = address;
-                self.print_state();
-                self.print_screen();
                 return true;
-            },
+            }
             0x2000..=0x2FFF => {
                 self.execute_subroutine(address);
-                self.print_state();
-                self.print_screen();
                 return true;
-            },
+            }
             0x3000..=0x3FFF => self.skip_next_position(self.registers[register_x] == mask),
             0x4000..=0x4FFF => self.skip_next_position(self.registers[register_x] != mask),
-            0x5000..=0x5FFF => self.skip_next_position(self.registers[register_x] == self.registers[register_y]),
+            0x5000..=0x5FFF => {
+                self.skip_next_position(self.registers[register_x] == self.registers[register_y])
+            }
             0x6000..=0x6FFF => self.registers[register_x] = mask,
             0x7000..=0x7FFF => self.registers[register_x] += mask,
-            0x9000..=0x9FFF => self.skip_next_position(self.registers[register_x] != self.registers[register_y]),
+            0x9000..=0x9FFF => {
+                self.skip_next_position(self.registers[register_x] != self.registers[register_y])
+            }
             0xA000..=0xAFFF => self.i = address,
             0xB000..=0xBFFF => {
                 self.memory_position = address + (self.registers[0x0] as usize);
-                self.print_state();
-                self.print_screen();
                 return true;
-            },
+            }
             0xC000..=0xCFFF => self.set_random_value(register_x, mask),
-            0xD000..=0xDFFF => self.draw(self.registers[register_x] as usize, self.registers[register_y] as usize, sub_op),
-            0xE09E..=0xEF9E => self.skip_next_position(self.registers[register_x] == self.key_pressed),
-            0xE0A1..=0xEFA1 => self.skip_next_position(self.registers[register_x] != self.key_pressed),
+            0xD000..=0xDFFF => self.draw(
+                self.registers[register_x] as usize,
+                self.registers[register_y] as usize,
+                sub_op,
+            ),
+            0xE09E..=0xEF9E => {
+                self.skip_next_position(self.registers[register_x] == self.key_pressed)
+            }
+            0xE0A1..=0xEFA1 => {
+                self.skip_next_position(self.registers[register_x] != self.key_pressed)
+            }
             _ => panic!("UNKNOWN OPCODE: {:04x}", instruction),
         }
 
         self.memory_position += 2;
-
-        self.print_state();
-
         return true;
     }
 
@@ -147,20 +144,45 @@ impl Chip8 {
 
         for i in 0..bytes {
             let data = self.memory[self.i + i];
-            debug(format!("{:08b}", data));
 
             self.xor_screen(position_x + 7, position_y + i, (data as u8) & 0b0000_0001);
-            self.xor_screen(position_x + 6, position_y + i, ((data as u8) & 0b0000_0010) >> 1);
-            self.xor_screen(position_x + 5, position_y + i, ((data as u8) & 0b0000_0100) >> 2);
-            self.xor_screen(position_x + 4, position_y + i, ((data as u8) & 0b0000_1000) >> 3);
+            self.xor_screen(
+                position_x + 6,
+                position_y + i,
+                ((data as u8) & 0b0000_0010) >> 1,
+            );
+            self.xor_screen(
+                position_x + 5,
+                position_y + i,
+                ((data as u8) & 0b0000_0100) >> 2,
+            );
+            self.xor_screen(
+                position_x + 4,
+                position_y + i,
+                ((data as u8) & 0b0000_1000) >> 3,
+            );
 
-            self.xor_screen(position_x + 3, position_y + i, ((data as u8) & 0b0001_0000) >> 4);
-            self.xor_screen(position_x + 2, position_y + i, ((data as u8) & 0b0010_0000) >> 5);
-            self.xor_screen(position_x + 1, position_y + i, ((data as u8) & 0b0100_0000) >> 6);
-            self.xor_screen(position_x + 0, position_y + i, ((data as u8) & 0b1000_0000) >> 7);
+            self.xor_screen(
+                position_x + 3,
+                position_y + i,
+                ((data as u8) & 0b0001_0000) >> 4,
+            );
+            self.xor_screen(
+                position_x + 2,
+                position_y + i,
+                ((data as u8) & 0b0010_0000) >> 5,
+            );
+            self.xor_screen(
+                position_x + 1,
+                position_y + i,
+                ((data as u8) & 0b0100_0000) >> 6,
+            );
+            self.xor_screen(
+                position_x + 0,
+                position_y + i,
+                ((data as u8) & 0b1000_0000) >> 7,
+            );
         }
-
-        self.print_screen();
     }
 
     fn xor_screen(&mut self, x: usize, y: usize, value: u8) {
@@ -176,49 +198,38 @@ impl Chip8 {
         } else {
             1
         };
-
     }
 
-    fn print_screen(&self) {
-        println!("╔════════════════════════════════════════════════════════════════╗");
-        for y in 0..SCREEN_Y {
-            print!("║");
-            for x in 0..SCREEN_X {
-                if self.screen[y][x] == 0_u8 {
-                    print!("░");
-                } else {
-                    print!("█");
-                }
-            }
-            println!("║");
-        }
-        println!("╚════════════════════════════════════════════════════════════════╝");
-    }
-
-    fn print_state(&self) {
-        debug(
-            format!("memory_position: {} ({:02x})\ni: {} ({:03x})\nv[0..4]:\t{}\t{}\t{}\t{}\t{}\nv[5..9]:\t{}\t{}\t{}\t{}\t{}\nv[10..15]:\t{}\t{}\t{}\t{}\t{}\t{}", 
-                self.memory_position,
-                self.memory_position,
-                self.i,
-                self.i,
-                self.registers[0],
-                self.registers[1],
-                self.registers[2],
-                self.registers[3],
-                self.registers[4],
-                self.registers[5],
-                self.registers[6],
-                self.registers[7],
-                self.registers[8],
-                self.registers[9],
-                self.registers[10],
-                self.registers[11],
-                self.registers[12],
-                self.registers[14],
-                self.registers[14],
-                self.registers[15],
-            ));
+    pub fn get_state(&self) -> String {
+        return format!(
+            "memory_position: {} ({:02x})\n\
+                        i: {} ({:03x})\n\n\
+                        v[0..3]:    {:02x} {:02x} {:02x} {:02x}\n\
+                        v[4..7]:    {:02x} {:02x} {:02x} {:02x}\n\
+                        v[8..11]:   {:02x} {:02x} {:02x} {:02x}\n\
+                        v[12..15]:  {:02x} {:02x} {:02x} {:02x}",
+            self.memory_position,
+            self.memory_position,
+            self.i,
+            self.i,
+            self.registers[0],
+            self.registers[1],
+            self.registers[2],
+            self.registers[3],
+            self.registers[4],
+            self.registers[5],
+            self.registers[6],
+            self.registers[7],
+            self.registers[8],
+            self.registers[9],
+            self.registers[10],
+            self.registers[11],
+            self.registers[12],
+            self.registers[14],
+            self.registers[14],
+            self.registers[15],
+        )
+        .to_string();
     }
 }
 
