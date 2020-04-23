@@ -1,5 +1,7 @@
 use rand::prelude::*;
 
+pub mod utils;
+
 fn debug(text: String) {
     println!("{}", text);
 }
