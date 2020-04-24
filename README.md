@@ -13,3 +13,4 @@ Also, lots of debuging comparing with the Colin Eberhardt's [Chip8 emulator](htt
 
 ## MAZE
 
+![image](https://user-images.githubusercontent.com/180231/80161100-ae625780-85a5-11ea-80f6-0eded174db1a.png)
