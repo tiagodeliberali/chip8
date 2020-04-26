@@ -7,8 +7,7 @@ Also, lots of debuging comparing with the Colin Eberhardt's [Chip8 emulator](htt
 
 ## work in progress
  - Operations from opcode 8 not implemented
- - Operations from opcode F not implemented
- - Fix random() usage to allow tests
+ - Operations from opcode F not implementedx'
  - Missing tests for most of operations
 
 ## MAZE
