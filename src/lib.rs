@@ -9,6 +9,16 @@ const LAST_12: u16 = 0b0000_1111_1111_1111;
 const SCREEN_X: usize = 64;
 const SCREEN_Y: usize = 32;
 
+#[cfg(test)]
+fn randon_u8() -> u8 {
+    0xff
+}
+
+#[cfg(not(test))]
+fn randon_u8() -> u8 {
+    random()
+}
+
 pub struct Chip8 {
     memory: [u8; 4096],
     memory_position: usize,
@@ -125,7 +135,7 @@ impl Chip8 {
     }
 
     fn set_random_value(&mut self, register_id: usize, mask: u8) {
-        let x: u8 = random();
+        let x: u8 = randon_u8();
         self.registers[register_id] = x & mask;
     }
 
@@ -260,15 +270,13 @@ mod tests {
 
     #[test]
     fn should_set_random_value_with_mask_on_registers() {
-        // This is a fake test, to avoid deal with random
-        // Must implement a Utils/Random trait and import it inside Chip8
-        let program = vec![0xC2, 0x00];
+        let program = vec![0xC2, 0x10];
         let mut chip = Chip8::new_with_memory(program);
 
         let should_iterate = chip.single_iteration();
 
         assert_eq!(should_iterate, true);
-        assert_eq!(chip.registers[0x02], 0x00);
+        assert_eq!(chip.registers[0x02], 0x10);
     }
 
     #[test]
